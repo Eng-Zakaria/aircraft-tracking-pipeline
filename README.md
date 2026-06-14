@@ -113,7 +113,7 @@ future extensions of this pipeline:
 ## Project Structure
 
 ```
-pipeline/
+aircraft-tracking-pipeline/
 ├── docker-compose.yml
 ├── data-source/
 │   ├── Dockerfile
@@ -162,7 +162,7 @@ a point/radius search (in those modes, `ADSBLOL_LAT/LON/RADIUS` are ignored).
 ### 2. Build and start everything
 
 ```bash
-cd pipeline
+cd aircraft-tracking-pipeline
 docker compose up --build -d
 ```
 

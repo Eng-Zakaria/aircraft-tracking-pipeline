@@ -1,0 +1,163 @@
+{
+  "title": "adsb.lol Aircraft Pipeline",
+  "uid": "aircraft-states-dashboard",
+  "refresh": "10s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Live Aircraft Positions",
+      "type": "geomap",
+      "gridPos": { "x": 0, "y": 0, "w": 16, "h": 10 },
+      "options": {
+        "view": { 
+          "id": "coordinates",
+          "lat": 33.0,
+          "lng": 33.0,
+          "zoom": 4.5
+        },
+        "basemap": {
+          "type": "default",
+          "config": {
+            "wrapX": false
+          }
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "config": {
+              "location": {
+                "mode": "coords",
+                "latitude": "latitude",
+                "longitude": "longitude"
+              },
+              "style": {
+                "color": { "field": "alt_baro", "fixed": "dark-green" },
+                "size": { "fixed": 12 }
+              }
+            }
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 10000 },
+              { "color": "purple", "value": 30000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"aircraft-states\")\n  |> range(start: -2m)\n  |> filter(fn: (r) => r._measurement == \"aircraft_states_raw\")\n  |> filter(fn: (r) => r._field == \"latitude\" or r._field == \"longitude\" or r._field == \"alt_baro\")\n  |> group(columns: [\"hex\", \"_field\"])\n  |> last()\n  |> group()\n  |> pivot(rowKey: [\"hex\"], columnKey: [\"_field\"], valueColumn: \"_value\")",
+          "datasource": { "type": "influxdb", "uid": "InfluxDB" }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Aircraft Count by Type (current)",
+      "type": "bargauge",
+      "gridPos": { "x": 16, "y": 0, "w": 8, "h": 10 },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"aircraft-states\")\n  |> range(start: -2m)\n  |> filter(fn: (r) => r._measurement == \"aircraft_states_raw\")\n  |> filter(fn: (r) => r._field == \"latitude\")\n  |> group(columns: [\"aircraft_type\"])\n  |> count()\n  |> rename(columns: {_value: \"count\"})\n  |> sort(columns: [\"count\"], desc: true)\n  |> limit(n: 15)",
+          "datasource": { "type": "influxdb", "uid": "InfluxDB" }
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "${__field.labels.aircraft_type}"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Total Tracked Aircraft Over Time",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 10, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"aircraft-states\")\n  |> range(start: -15m)\n  |> filter(fn: (r) => r._measurement == \"aircraft_states_raw\")\n  |> filter(fn: (r) => r._field == \"latitude\")\n  |> group(columns: [\"_time\"])\n  |> count(column: \"_value\")\n  |> group()\n  |> aggregateWindow(every: 10s, fn: sum, createEmpty: false)\n  |> map(fn: (r) => ({ r with _field: \"aircraft_count\" }))",
+          "datasource": { "type": "influxdb", "uid": "InfluxDB" }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Total Aircraft"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Average Ground Speed by Aircraft Type",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 10, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"aircraft-states\")\n  |> range(start: -15m)\n  |> filter(fn: (r) => r._measurement == \"aircraft_states_agg\")\n  |> filter(fn: (r) => r._field == \"avg_ground_speed\")\n  |> group(columns: [\"aircraft_type\"])",
+          "datasource": { "type": "influxdb", "uid": "InfluxDB" }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { 
+          "unit": "velocityknot",
+          "displayName": "${__field.labels.aircraft_type}" 
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Average Baro Altitude by Aircraft Type",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 18, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"aircraft-states\")\n  |> range(start: -15m)\n  |> filter(fn: (r) => r._measurement == \"aircraft_states_agg\")\n  |> filter(fn: (r) => r._field == \"avg_alt_baro\")\n  |> group(columns: [\"aircraft_type\"])",
+          "datasource": { "type": "influxdb", "uid": "InfluxDB" }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { 
+          "unit": "lengthft",
+          "displayName": "${__field.labels.aircraft_type}" 
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Aircraft On Ground vs Airborne (current)",
+      "type": "piechart",
+      "gridPos": { "x": 12, "y": 18, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"aircraft-states\")\n  |> range(start: -2m)\n  |> filter(fn: (r) => r._measurement == \"aircraft_states_raw\")\n  |> filter(fn: (r) => r._field == \"latitude\")\n  |> group(columns: [\"on_ground\"])\n  |> count()",
+          "datasource": { "type": "influxdb", "uid": "InfluxDB" }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "${__field.labels.on_ground}"
+        }
+      }
+    }
+  ],
+  "templating": {
+    "list": []
+  }
+}

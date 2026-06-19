@@ -55,8 +55,7 @@
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"aircraft-states\")\n  |> range(start: -2m)\n  |> filter(fn: (r) => r._measurement == \"aircraft_states_raw\")\n  |> filter(fn: (r) => r._field == \"latitude\" or r._field == \"longitude\" or r._field == \"alt_baro\")\n  |> group(columns: [\"hex\", \"_field\"])\n  |> last()\n  |> group()\n  |> pivot(rowKey: [\"hex\"], columnKey: [\"_field\"], valueColumn: \"_value\")",
-          "datasource": { "type": "influxdb", "uid": "InfluxDB" }
+          "query": "from(bucket: \"aircraft-states\")\n  |> range(start: -2m)\n  |> filter(fn: (r) => r._measurement == \"aircraft_states_raw\")\n  |> filter(fn: (r) => r._field == \"latitude\" or r._field == \"longitude\" or r._field == \"alt_baro\")\n  |> group(columns: [\"hex\", \"aircraft_type\", \"_field\"])\n  |> last()\n  |> group(columns: [\"hex\"])\n  |> pivot(rowKey: [\"hex\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()",          "datasource": { "type": "influxdb", "uid": "InfluxDB" }
         }
       ]
     },
